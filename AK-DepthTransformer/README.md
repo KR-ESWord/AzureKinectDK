@@ -2,9 +2,9 @@
 
 # File Path
 - Depth Image
-  - AzureKinectData --> <yymmdd> --> <subject_id> --> <record_sequence> --> <2_DepthImage> --> <kinect_location> --> *.png
+  - AzureKinectData <yymmdd> --> <subject_id> --> <record_sequence> --> <2_DepthImage> --> <kinect_location> --> *.png
 - Calibration JSON
-   - AzureKinectData --> <yymmdd> --> <subject_id> --> <record_sequence> --> <6_CameraInfo> --> *.json
+   - AzureKinectData <yymmdd> --> <subject_id> --> <record_sequence> --> <6_CameraInfo> --> *.json
 
 # Requirement
   - Conected Any Azure Kinect to PC
