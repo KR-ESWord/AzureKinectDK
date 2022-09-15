@@ -13,7 +13,7 @@ using Image = Microsoft.Azure.Kinect.Sensor.Image;
 using ImageMagick;
 // Json using --> Get Azure Kinect Calibration JSON
 using Newtonsoft.Json.Linq;
-
+using System.Collections;
 
 namespace ImageTransformer_v1
 {
@@ -172,73 +172,88 @@ namespace ImageTransformer_v1
             var root_path = @"D:\AzureKinectData";
             var cap_date = "220708";
             var subject_id = "c0062";
-            var record_num = "00";
-            var kinect_loc = "kf";
-            var di_folder = "2_DepthImage";
-            var ki_folder = "6_CameraInfo";
-            var trg_folder = "7_TransformedDepthImage";
 
-            var dif_path = Path.Combine(root_path, cap_date, subject_id, record_num, di_folder, kinect_loc);
-            var tif_path = Path.Combine(root_path, cap_date, subject_id, record_num, trg_folder, kinect_loc);
-            var kif_path = Path.Combine(root_path, cap_date, subject_id, record_num, ki_folder);
-            var kid_path = Path.Combine(kif_path, subject_id + "_" + cap_date + "_" + kinect_loc + "_" + record_num + "_camerainfo.json");
+            var subject_path = Path.Combine(root_path, cap_date, subject_id);
+            DirectoryInfo subject_di = new DirectoryInfo(@subject_path);
+            DirectoryInfo[] scene_list = subject_di.GetDirectories();
 
-            DirectoryInfo ki_di = new DirectoryInfo(tif_path);
-            if (!ki_di.Exists)
+            ArrayList loc_list = new ArrayList();
+            loc_list.Add("kf");
+            loc_list.Add("kl");
+            loc_list.Add("kr");
+
+            foreach (DirectoryInfo scene in scene_list)
             {
-                ki_di.Create();
-            }
+                var record_num = scene.ToString();
 
-            // Azure Kinect Setting
-            Calibration calibration = AzureKinectReady();
-            Calibration re_calibration = ReformCalibration(kid_path, calibration);
-            Transformation tr = new Transformation(re_calibration);
+                var di_folder = "2_DepthImage";
+                var ki_folder = "6_CameraInfo";
+                var trg_folder = "7_TransformedDepthImage";
 
-            // Transformation Working
-            Console.WriteLine("Working Transformation\nPlease Wait few minute...");
+                foreach (string kinect_loc in loc_list)
+                {
+                    var dif_path = Path.Combine(root_path, cap_date, subject_id, record_num, di_folder, kinect_loc);
+                    var tif_path = Path.Combine(root_path, cap_date, subject_id, record_num, trg_folder, kinect_loc);
+                    var kif_path = Path.Combine(root_path, cap_date, subject_id, record_num, ki_folder);
+                    var kid_path = Path.Combine(kif_path, subject_id + "_" + cap_date + "_" + kinect_loc + "_" + record_num + "_camerainfo.json");
 
-            DirectoryInfo di = new DirectoryInfo(@dif_path);
-            FileInfo[] depth_imgs = di.GetFiles("*.png");
-
-            Parallel.ForEach(depth_imgs, depth_img =>
-            {
-                string d_img = depth_img.ToString();
-                var dimg_path = Path.Combine(dif_path, d_img);
-
-                var trdepth_img = d_img.Replace("Depth", "TrDepth");
-                var trimg_path = Path.Combine(tif_path, trdepth_img);
-
-                MagickImage org_depth_image = new MagickImage(dimg_path);
-                ushort[] pixelValues = org_depth_image.GetPixels().ToArray();
-                int stride = org_depth_image.Width * sizeof(UInt16);
-                Image depth_kinect_image = new Image(ImageFormat.Depth16, org_depth_image.Width, org_depth_image.Height, stride);
-                int sizeX = org_depth_image.Width;
-                int sizeY = org_depth_image.Height;
-
-                int count = 0;
-                for (int y = 0; y < sizeY; y++) {
-                    for (int x = 0; x < sizeX; x++) {
-
-                        depth_kinect_image.SetPixel(y, x, pixelValues[count]);
-                        count++;
+                    DirectoryInfo ki_di = new DirectoryInfo(tif_path);
+                    if (!ki_di.Exists) {
+                        ki_di.Create();
                     }
-                }
 
-                Image tr_img = tr.DepthImageToColorCamera(depth_kinect_image);
-                byte[] tr_buff = tr_img.Memory.ToArray();
+                    // Azure Kinect Setting
+                    Calibration calibration = AzureKinectReady();
+                    Calibration re_calibration = ReformCalibration(kid_path, calibration);
+                    Transformation tr = new Transformation(re_calibration);
 
-                Int32Rect rect = new Int32Rect(0, 0, tr_img.WidthPixels, tr_img.HeightPixels);
+                    // Transformation Working
+                    Console.WriteLine("Working Transformation\nPlease Wait few minute...");
 
-                WriteableBitmap wbitmap = new WriteableBitmap(
-                    tr_img.WidthPixels, tr_img.HeightPixels,
-                    96.0, 96.0,
-                    System.Windows.Media.PixelFormats.Gray16, null);
+                    DirectoryInfo dif = new DirectoryInfo(@dif_path);
+                    FileInfo[] depth_imgs = dif.GetFiles("*.png");
 
-                wbitmap.WritePixels(rect, tr_buff, tr_img.StrideBytes, 0, 0);
-                wbitmap.Freeze();
+                    Parallel.ForEach(depth_imgs, depth_img =>
+                    {
+                        string d_img = depth_img.ToString();
+                        var dimg_path = Path.Combine(dif_path, d_img);
 
-                PNGSave(wbitmap, trimg_path);
-            });
+                        var trdepth_img = d_img.Replace("Depth", "TrDepth");
+                        var trimg_path = Path.Combine(tif_path, trdepth_img);
+
+                        MagickImage org_depth_image = new MagickImage(dimg_path);
+                        ushort[] pixelValues = org_depth_image.GetPixels().ToArray();
+                        int stride = org_depth_image.Width * sizeof(UInt16);
+                        Image depth_kinect_image = new Image(ImageFormat.Depth16, org_depth_image.Width, org_depth_image.Height, stride);
+                        int sizeX = org_depth_image.Width;
+                        int sizeY = org_depth_image.Height;
+
+                        int count = 0;
+                        for (int y = 0; y < sizeY; y++) {
+                            for (int x = 0; x < sizeX; x++) {
+
+                                depth_kinect_image.SetPixel(y, x, pixelValues[count]);
+                                count++;
+                            }
+                        }
+
+                        Image tr_img = tr.DepthImageToColorCamera(depth_kinect_image);
+                        byte[] tr_buff = tr_img.Memory.ToArray();
+
+                        Int32Rect rect = new Int32Rect(0, 0, tr_img.WidthPixels, tr_img.HeightPixels);
+
+                        WriteableBitmap wbitmap = new WriteableBitmap(
+                            tr_img.WidthPixels, tr_img.HeightPixels,
+                            96.0, 96.0,
+                            System.Windows.Media.PixelFormats.Gray16, null);
+
+                        wbitmap.WritePixels(rect, tr_buff, tr_img.StrideBytes, 0, 0);
+                        wbitmap.Freeze();
+
+                        PNGSave(wbitmap, trimg_path);
+                    });
+                };
+            };
         }
     }
 }
