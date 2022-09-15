@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -170,15 +170,16 @@ namespace ImageTransformer_v1
         {
             // Program Target Setting
             var root_path = @"D:\AzureKinectData";
-            var cap_date = "220712";
-            var subject_id = "c0000";
+            var cap_date = "220708";
+            var subject_id = "c0062";
             var record_num = "00";
             var kinect_loc = "kf";
             var di_folder = "2_DepthImage";
             var ki_folder = "6_CameraInfo";
+            var trg_folder = "7_TransformedDepthImage";
 
             var dif_path = Path.Combine(root_path, cap_date, subject_id, record_num, di_folder, kinect_loc);
-            var tif_path = Path.Combine(root_path, cap_date, subject_id, record_num, di_folder, kinect_loc + "_tr");
+            var tif_path = Path.Combine(root_path, cap_date, subject_id, record_num, trg_folder, kinect_loc);
             var kif_path = Path.Combine(root_path, cap_date, subject_id, record_num, ki_folder);
             var kid_path = Path.Combine(kif_path, subject_id + "_" + cap_date + "_" + kinect_loc + "_" + record_num + "_camerainfo.json");
 
@@ -195,12 +196,16 @@ namespace ImageTransformer_v1
 
             // Transformation Working
             Console.WriteLine("Working Transformation\nPlease Wait few minute...");
-            string[] depth_imgs = Directory.GetFiles(@dif_path, "*.png");
+
+            DirectoryInfo di = new DirectoryInfo(@dif_path);
+            FileInfo[] depth_imgs = di.GetFiles("*.png");
+
             Parallel.ForEach(depth_imgs, depth_img =>
             {
-                var dimg_path = Path.Combine(dif_path, depth_img);
+                string d_img = depth_img.ToString();
+                var dimg_path = Path.Combine(dif_path, d_img);
 
-                string trdepth_img = depth_img.Replace("Depth", "TrDepth");
+                var trdepth_img = d_img.Replace("Depth", "TrDepth");
                 var trimg_path = Path.Combine(tif_path, trdepth_img);
 
                 MagickImage org_depth_image = new MagickImage(dimg_path);
@@ -209,12 +214,10 @@ namespace ImageTransformer_v1
                 Image depth_kinect_image = new Image(ImageFormat.Depth16, org_depth_image.Width, org_depth_image.Height, stride);
                 int sizeX = org_depth_image.Width;
                 int sizeY = org_depth_image.Height;
-                
+
                 int count = 0;
-                for (int y = 0; y < sizeY; y++)
-                {
-                    for (int x = 0; x < sizeX; x++)
-                    {
+                for (int y = 0; y < sizeY; y++) {
+                    for (int x = 0; x < sizeX; x++) {
 
                         depth_kinect_image.SetPixel(y, x, pixelValues[count]);
                         count++;
